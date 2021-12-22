@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -17,10 +18,17 @@ const (
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	userUUID := mux.Vars(r)["uuid"]
 	offset := "0"
 	limit := "20"
 	order_direction := "desc"
+	owner := ""
+
+	if x, ok := q["owner"]; ok {
+		owner = x[0]
+	} else {
+		http.ServeFile(w, r, "./assets/index.html")
+		return
+	}
 
 	if x, ok := q["order_direction"]; ok {
 		order_direction = x[0]
@@ -34,9 +42,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		limit = x[0]
 	}
 
-	resp, err := http.Get(opensea_url + "&owner=" + userUUID + "&order_direction=" + order_direction + "&offset=" + offset + "&limit=" + limit)
+	resp, err := http.Get(opensea_url + "&owner=" + owner + "&order_direction=" + order_direction + "&offset=" + offset + "&limit=" + limit)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -44,20 +52,40 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Println("sucess ", resp)
-	w.Write(body)
-	w.WriteHeader(http.StatusOK)
+	m := map[string]interface{}{}
+	t := template.New("nfts.html")              // Create a template.
+	t, err = t.ParseFiles("./assets/nfts.html") // Parse template file.
+
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.Unmarshal([]byte(body), &m); err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := t.Execute(w, m); err == nil {
+		log.Println("success ", resp)
+	} else {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
 }
 
 // Route declaration
 func router() *mux.Router {
 	r := mux.NewRouter()
-	r.HandleFunc("/users/{uuid}/nft", handler).Methods("GET")
+	r.HandleFunc("/", handler).Methods("GET")
 	return r
 }
 

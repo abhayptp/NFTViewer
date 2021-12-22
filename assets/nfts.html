@@ -1,0 +1,24 @@
+<head>
+  <style>
+   .container {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  color: #000000;}
+  .container .item {
+  flex: 1;}
+  </style>
+</head>
+<h1>Your NFTs</h1>
+<div class="container">
+  {{range .assets}}
+  {{ if .name }}
+  <div class="item">
+    <img src="{{.image_url}}" alt="{{.name}}" width="400" height="500">
+    <p><a href="{{.permalink}}"> {{.name}} </a> </p>
+  </div>
+  {{end}}
+  {{end}}
+</div>
+</ul>
